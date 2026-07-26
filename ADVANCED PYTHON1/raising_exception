@@ -1,0 +1,11 @@
+# Division program with error handling
+
+a = int(input("Enter first number: "))
+b = int(input("Enter second number: "))
+
+if b == 0:
+    raise ZeroDivisionError("Division by zero is not allowed")
+else:
+    print("Result:", a / b)   # Normal division
+    print("Floor Division:", a // b)  # Integer division
+    print("Remainder:", a % b)        # Modulus
