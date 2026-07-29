@@ -3,8 +3,7 @@
 Daily Python practice with professional-grade code examples and mini projects.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg) 
 ---
 
 ## 📂 Repository Structure
