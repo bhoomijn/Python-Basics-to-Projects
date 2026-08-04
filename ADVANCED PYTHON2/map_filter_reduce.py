@@ -40,7 +40,20 @@ print(result)
 
 
 # Reduce another Example: 
+
 def sum(a, b):
     return a + b
 print(reduce(sum, l))  # Output: 36
 
+# Return another function that is the composition of two functions f and g.
+
+from functools import reduce
+
+
+def sum(a,b):
+    return a + b
+
+mul = lambda x, y: x * y
+
+print(reduce(sum, [1, 2, 3, 4, 5]))
+print(reduce(mul, [1, 2, 3, 4, 5]))
