@@ -2,6 +2,7 @@ import speech_recognition as sr
 import webbrowser
 import pyttsx3
 import datetime
+import musicLibrary   # apna musicLibrary.py file same folder me rakho
 
 recognizer = sr.Recognizer()
 engine = pyttsx3.init()
@@ -32,27 +33,42 @@ if __name__ == "__main__":
         if "open google" in command.lower():
             speak("Opening Google")
             webbrowser.open("https://www.google.com")
+
         elif "open youtube" in command.lower():
             speak("Opening YouTube")
             webbrowser.open("https://www.youtube.com")
+
         elif "open twitter" in command.lower():
             speak("Opening Twitter")
             webbrowser.open("https://www.twitter.com")
+
         elif "open linkedin" in command.lower():
             speak("Opening LinkedIn")
             webbrowser.open("https://www.linkedin.com/")
+
         elif "open gmail" in command.lower():
             speak("Opening Gmail")
             webbrowser.open("https://mail.google.com/")
+
         elif "open github" in command.lower():
             speak("Opening GitHub")
             webbrowser.open("https://github.com")
+
         elif "time" in command.lower():
             now = datetime.datetime.now().strftime("%H:%M")
             speak(f"The time is {now}")
+
+        elif command.lower().startswith("play "):
+            song = command.lower().split("play ")[1].strip()
+            if song in musicLibrary.music:
+                speak(f"Playing {song}")
+                webbrowser.open(musicLibrary.music[song])
+            else:
+                speak("Sorry, song not found.")
+
         elif "exit" in command.lower():
             speak("Goodbye Bhoomi!")
             break
+
         else:
             speak("Sorry, I didn't understand that.")
-
