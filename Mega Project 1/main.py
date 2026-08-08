@@ -1,6 +1,3 @@
-
-
-
 import os
 import webbrowser
 import datetime
@@ -12,7 +9,6 @@ import musicLibrary
 from dotenv import load_dotenv
 from openai import OpenAI
 
-
 # =========================================================
 # LOAD API KEYS FROM .env
 # =========================================================
@@ -23,8 +19,7 @@ load_dotenv()
 # Keys .env file mein rakho
 
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # =========================================================
 # INITIALIZATION
@@ -35,9 +30,11 @@ engine = pyttsx3.init()
 
 client = None
 
-if OPENAI_API_KEY:
-    client = OpenAI(api_key=OPENAI_API_KEY)
-
+if GROQ_API_KEY:
+    client = OpenAI(
+        api_key=GROQ_API_KEY,
+        base_url="https://api.groq.com/openai/v1"
+    )
 
 # =========================================================
 # SPEAK
@@ -101,7 +98,7 @@ def take_command():
 
 
 # =========================================================
-# AI FUNCTION
+# AI FUNCTION - GROQ
 # =========================================================
 
 def ask_ai(question):
@@ -109,8 +106,8 @@ def ask_ai(question):
     if not client:
 
         speak(
-            "OpenAI is not configured. "
-            "Please add your OpenAI API key in the .env file."
+            "Groq is not configured. "
+            "Please add your Groq API key in the .env file."
         )
 
         return
@@ -119,7 +116,7 @@ def ask_ai(question):
 
         response = client.chat.completions.create(
 
-            model="gpt-4o-mini",
+            model="openai/gpt-oss-120b",
 
             messages=[
                 {
@@ -146,7 +143,7 @@ def ask_ai(question):
 
     except Exception as e:
 
-        print("OpenAI Error:", e)
+        print("Groq Error:", e)
 
         speak(
             "Sorry, I could not connect to the AI service."
