@@ -30,7 +30,6 @@ subtitle_font = pygame.font.Font(None, 30)
 status_font = pygame.font.Font(None, 34)
 small_font = pygame.font.Font(None, 24)
 input_font = pygame.font.Font(None, 30)
-response_font = pygame.font.Font(None, 26)
 
 
 # =========================================================
@@ -92,6 +91,7 @@ def draw_orb(surface, x, y, time):
 
     pulse = math.sin(time * 0.004) * 8
 
+    # Outer rings
     for radius in [
         105 + pulse,
         85 + pulse / 2,
@@ -106,6 +106,7 @@ def draw_orb(surface, x, y, time):
             2
         )
 
+    # Main orb
     pygame.draw.circle(
         surface,
         PANEL,
@@ -121,6 +122,7 @@ def draw_orb(surface, x, y, time):
         3
     )
 
+    # Inner orb
     pygame.draw.circle(
         surface,
         ACCENT_2,
@@ -136,7 +138,7 @@ def draw_orb(surface, x, y, time):
 def draw_centered_text(text, font, color, y):
 
     text_surface = font.render(
-        str(text),
+        text,
         True,
         color
     )
@@ -152,89 +154,6 @@ def draw_centered_text(text, font, color, y):
 
 
 # =========================================================
-# DRAW RESPONSE
-# =========================================================
-
-def draw_response(text):
-
-    if not text:
-        return
-
-    # Response panel
-    response_box = pygame.Rect(
-        100,
-        395,
-        800,
-        105
-    )
-
-    pygame.draw.rect(
-        screen,
-        PANEL,
-        response_box,
-        border_radius=15
-    )
-
-    pygame.draw.rect(
-        screen,
-        ACCENT_2,
-        response_box,
-        1,
-        border_radius=15
-    )
-
-    # Break response into lines
-    words = str(text).split()
-
-    lines = []
-    current_line = ""
-
-    for word in words:
-
-        test_line = (
-            current_line + " " + word
-        ).strip()
-
-        if response_font.size(test_line)[0] < 750:
-
-            current_line = test_line
-
-        else:
-
-            if current_line:
-                lines.append(current_line)
-
-            current_line = word
-
-    if current_line:
-        lines.append(current_line)
-
-    # Maximum 3 lines
-    lines = lines[:3]
-
-    y = response_box.y + 20
-
-    for line in lines:
-
-        text_surface = response_font.render(
-            line,
-            True,
-            TEXT
-        )
-
-        text_rect = text_surface.get_rect(
-            center=(WIDTH // 2, y)
-        )
-
-        screen.blit(
-            text_surface,
-            text_rect
-        )
-
-        y += 27
-
-
-# =========================================================
 # PROCESS COMMAND
 # =========================================================
 
@@ -244,51 +163,25 @@ def run_command(command):
     global response_text
     global input_text
 
-    command = command.strip()
-
-    if not command:
-        return None
+    if not command.strip():
+        return
 
     status = "THINKING..."
-
     response_text = "Processing..."
 
-    # Show Processing immediately
-    draw_screen()
     pygame.display.flip()
 
-    try:
-
-        result = process_command(command)
-
-    except Exception as e:
-
-        print("Command Error:", e)
-
-        result = (
-            "Sorry, something went wrong."
-        )
+    result = process_command(command)
 
     if result == "__EXIT__":
 
         return "__EXIT__"
 
-    if result:
-
-        response_text = str(result)
-
-    else:
-
-        response_text = "Done."
+    response_text = result if result else "Done."
 
     status = "READY"
 
     input_text = ""
-
-    # IMPORTANT:
-    # Immediately redraw final answer
-    draw_screen()
-    pygame.display.flip()
 
     return result
 
@@ -303,34 +196,20 @@ def handle_voice_command():
     global response_text
 
     status = "LISTENING..."
-
     response_text = "Listening..."
 
-    draw_screen()
     pygame.display.flip()
 
     command = take_command()
 
     if command:
 
-        result = run_command(command)
-
-        if result == "__EXIT__":
-
-            return "__EXIT__"
+        run_command(command)
 
     else:
 
         status = "READY"
-
-        response_text = (
-            "I didn't hear anything."
-        )
-
-        draw_screen()
-        pygame.display.flip()
-
-    return None
+        response_text = "I didn't hear anything."
 
 
 # =========================================================
@@ -343,35 +222,132 @@ def handle_typed_command():
 
     command = input_text.strip()
 
-    if not command:
-        return None
+    if command:
 
-    result = run_command(command)
+        result = run_command(command)
 
-    if result == "__EXIT__":
+        if result == "__EXIT__":
 
-        return "__EXIT__"
+            return "__EXIT__"
 
-    return result
+    return None
 
 
 # =========================================================
-# DRAW COMPLETE SCREEN
+# MAIN LOOP
 # =========================================================
 
-def draw_screen():
+while running:
 
     current_time = pygame.time.get_ticks()
 
-    # -----------------------------------------------------
+    # =====================================================
+    # EVENTS
+    # =====================================================
+
+    for event in pygame.event.get():
+
+        # -------------------------------------------------
+        # WINDOW CLOSE
+        # -------------------------------------------------
+
+        if event.type == pygame.QUIT:
+
+            running = False
+
+
+        # -------------------------------------------------
+        # MOUSE CLICK
+        # -------------------------------------------------
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+
+            # Microphone
+            if mic_button.collidepoint(event.pos):
+
+                handle_voice_command()
+
+            # Send
+            elif send_button.collidepoint(event.pos):
+
+                result = handle_typed_command()
+
+                if result == "__EXIT__":
+
+                    running = False
+
+            # Input box
+            elif input_box.collidepoint(event.pos):
+
+                input_active = True
+
+            else:
+
+                input_active = False
+
+
+        # -------------------------------------------------
+        # KEYBOARD
+        # -------------------------------------------------
+
+        elif event.type == pygame.KEYDOWN:
+
+            # ESC = EXIT
+            if event.key == pygame.K_ESCAPE:
+
+                running = False
+
+            # SPACE = MICROPHONE
+            elif (
+                event.key == pygame.K_SPACE
+                and not input_active
+            ):
+
+                handle_voice_command()
+
+            # ENTER = SEND
+            elif (
+                event.key == pygame.K_RETURN
+                and input_active
+            ):
+
+                result = handle_typed_command()
+
+                if result == "__EXIT__":
+
+                    running = False
+
+            # BACKSPACE
+            elif (
+                event.key == pygame.K_BACKSPACE
+                and input_active
+            ):
+
+                input_text = input_text[:-1]
+
+            # Normal typing
+            elif (
+                input_active
+                and event.unicode
+                and event.key != pygame.K_RETURN
+            ):
+
+                # Keep input reasonably sized
+                if len(input_text) < 120:
+
+                    input_text += event.unicode
+
+
+    # =====================================================
     # BACKGROUND
-    # -----------------------------------------------------
+    # =====================================================
 
     screen.fill(BG)
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # HEADER
-    # -----------------------------------------------------
+    # =====================================================
 
     draw_centered_text(
         "J A R V I S",
@@ -387,37 +363,56 @@ def draw_screen():
         95
     )
 
-    # -----------------------------------------------------
-    # ORB
-    # -----------------------------------------------------
+
+    # =====================================================
+    # AI ORB
+    # =====================================================
 
     draw_orb(
         screen,
         WIDTH // 2,
-        HEIGHT // 2 - 35,
+        HEIGHT // 2 - 25,
         current_time
     )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # STATUS
-    # -----------------------------------------------------
+    # =====================================================
 
     draw_centered_text(
         status,
         status_font,
         ACCENT,
-        335
+        HEIGHT // 2 + 120
     )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # RESPONSE
-    # -----------------------------------------------------
+    # =====================================================
 
-    draw_response(response_text)
+    if response_text:
 
-    # -----------------------------------------------------
+        display_response = response_text
+
+        if len(display_response) > 75:
+
+            display_response = (
+                display_response[:75] + "..."
+            )
+
+        draw_centered_text(
+            display_response,
+            small_font,
+            TEXT,
+            HEIGHT // 2 + 160
+        )
+
+
+    # =====================================================
     # INPUT BOX
-    # -----------------------------------------------------
+    # =====================================================
 
     pygame.draw.rect(
         screen,
@@ -434,6 +429,8 @@ def draw_screen():
         border_radius=12
     )
 
+
+    # Input placeholder
     if input_text:
 
         input_surface = input_font.render(
@@ -450,6 +447,7 @@ def draw_screen():
             MUTED
         )
 
+
     screen.blit(
         input_surface,
         (
@@ -458,9 +456,10 @@ def draw_screen():
         )
     )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # MICROPHONE BUTTON
-    # -----------------------------------------------------
+    # =====================================================
 
     pygame.draw.rect(
         screen,
@@ -484,9 +483,10 @@ def draw_screen():
         mic_rect
     )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # SEND BUTTON
-    # -----------------------------------------------------
+    # =====================================================
 
     pygame.draw.rect(
         screen,
@@ -510,9 +510,10 @@ def draw_screen():
         send_rect
     )
 
-    # -----------------------------------------------------
+
+    # =====================================================
     # FOOTER
-    # -----------------------------------------------------
+    # =====================================================
 
     draw_centered_text(
         "Groq AI  •  Python  •  Pygame",
@@ -522,111 +523,9 @@ def draw_screen():
     )
 
 
-# =========================================================
-# MAIN LOOP
-# =========================================================
-
-while running:
-
-    for event in pygame.event.get():
-
-        # -------------------------------------------------
-        # CLOSE WINDOW
-        # -------------------------------------------------
-
-        if event.type == pygame.QUIT:
-
-            running = False
-
-        # -------------------------------------------------
-        # MOUSE
-        # -------------------------------------------------
-
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-
-            if mic_button.collidepoint(event.pos):
-
-                result = handle_voice_command()
-
-                if result == "__EXIT__":
-
-                    running = False
-
-            elif send_button.collidepoint(event.pos):
-
-                result = handle_typed_command()
-
-                if result == "__EXIT__":
-
-                    running = False
-
-            elif input_box.collidepoint(event.pos):
-
-                input_active = True
-
-            else:
-
-                input_active = False
-
-        # -------------------------------------------------
-        # KEYBOARD
-        # -------------------------------------------------
-
-        elif event.type == pygame.KEYDOWN:
-
-            # ESC
-            if event.key == pygame.K_ESCAPE:
-
-                running = False
-
-            # ENTER
-            elif (
-                event.key == pygame.K_RETURN
-                and input_active
-            ):
-
-                result = handle_typed_command()
-
-                if result == "__EXIT__":
-
-                    running = False
-
-            # BACKSPACE
-            elif (
-                event.key == pygame.K_BACKSPACE
-                and input_active
-            ):
-
-                input_text = input_text[:-1]
-
-            # SPACE = microphone
-            elif (
-                event.key == pygame.K_SPACE
-                and not input_active
-            ):
-
-                result = handle_voice_command()
-
-                if result == "__EXIT__":
-
-                    running = False
-
-            # NORMAL TYPING
-            elif (
-                input_active
-                and event.unicode
-                and event.key != pygame.K_RETURN
-            ):
-
-                if len(input_text) < 120:
-
-                    input_text += event.unicode
-
-    # -----------------------------------------------------
-    # DRAW
-    # -----------------------------------------------------
-
-    draw_screen()
+    # =====================================================
+    # UPDATE
+    # =====================================================
 
     pygame.display.flip()
 
