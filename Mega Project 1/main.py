@@ -1,3 +1,4 @@
+
 import os
 import webbrowser
 import datetime
@@ -9,17 +10,16 @@ import musicLibrary
 from dotenv import load_dotenv
 from openai import OpenAI
 
+
 # =========================================================
-# LOAD API KEYS FROM .env
+# LOAD API KEYS
 # =========================================================
 
 load_dotenv()
 
-# API KEYS YAHAN DIRECTLY MAT DALO
-# Keys .env file mein rakho
-
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 
 # =========================================================
 # INITIALIZATION
@@ -35,6 +35,7 @@ if GROQ_API_KEY:
         api_key=GROQ_API_KEY,
         base_url="https://api.groq.com/openai/v1"
     )
+
 
 # =========================================================
 # SPEAK
@@ -53,7 +54,7 @@ def speak(text):
 
 
 # =========================================================
-# TAKE COMMAND
+# TAKE VOICE COMMAND
 # =========================================================
 
 def take_command():
@@ -84,33 +85,34 @@ def take_command():
     except sr.WaitTimeoutError:
 
         print("No speech detected.")
-        return input("Type your command: ")
+        return ""
 
     except sr.UnknownValueError:
 
         print("Could not understand audio.")
-        return input("Type your command: ")
+        return ""
 
     except Exception as e:
 
         print("Microphone Error:", e)
-        return input("Type your command: ")
+        return ""
 
 
 # =========================================================
-# AI FUNCTION - GROQ
+# GROQ AI
 # =========================================================
 
 def ask_ai(question):
 
     if not client:
 
-        speak(
+        message = (
             "Groq is not configured. "
             "Please add your Groq API key in the .env file."
         )
 
-        return
+        speak(message)
+        return message
 
     try:
 
@@ -141,33 +143,42 @@ def ask_ai(question):
 
             speak(answer)
 
+            # IMPORTANT:
+            # Send answer back to Pygame GUI
+            return answer
+
+        return "I could not generate an answer."
+
     except Exception as e:
 
         print("Groq Error:", e)
 
-        speak(
+        message = (
             "Sorry, I could not connect to the AI service."
         )
 
+        speak(message)
+
+        return message
+
 
 # =========================================================
-# NEWS FUNCTION
+# NEWS
 # =========================================================
 
 def get_news():
 
     if not NEWS_API_KEY:
 
-        speak(
+        message = (
             "News API is not configured. "
             "Please add your News API key in the .env file."
         )
 
-        return
+        speak(message)
+        return message
 
-    speak(
-        "Getting the latest news."
-    )
+    speak("Getting the latest news.")
 
     try:
 
@@ -194,16 +205,6 @@ def get_news():
 
             data = response.json()
 
-            print(
-                "API Status:",
-                data.get("status")
-            )
-
-            print(
-                "Total Results:",
-                data.get("totalResults")
-            )
-
             articles = data.get(
                 "articles",
                 []
@@ -211,11 +212,14 @@ def get_news():
 
             if not articles:
 
-                speak(
+                message = (
                     "Sorry, no latest news was found."
                 )
 
-                return
+                speak(message)
+                return message
+
+            headlines = []
 
             speak(
                 "Here are the latest news headlines."
@@ -227,325 +231,381 @@ def get_news():
 
                 if title:
 
-                    print(
-                        "News:",
-                        title
-                    )
+                    print("News:", title)
 
                     speak(title)
+
+                    headlines.append(title)
+
+            return "\n".join(headlines)
 
         else:
 
             print(
-                "News API Response:"
-            )
-
-            print(
+                "News API Response:",
                 response.text
             )
 
-            speak(
+            message = (
                 "Sorry, I could not fetch the news."
             )
 
+            speak(message)
+            return message
+
     except requests.exceptions.ConnectionError:
 
-        speak(
+        message = (
             "Please check your internet connection."
         )
 
+        speak(message)
+        return message
+
     except requests.exceptions.Timeout:
 
-        speak(
+        message = (
             "The news service is taking too long to respond."
         )
 
+        speak(message)
+        return message
+
     except Exception as e:
 
-        print(
-            "News Error:",
-            e
-        )
+        print("News Error:", e)
 
-        speak(
+        message = (
             "There was an error while getting the news."
         )
 
+        speak(message)
+        return message
+
 
 # =========================================================
-# MAIN PROGRAM
+# PROCESS COMMAND
+# =========================================================
+
+def process_command(command):
+
+    if not command:
+        return ""
+
+    print("You said:", command)
+
+    command_lower = command.lower().strip()
+
+
+    # =====================================================
+    # GOOGLE
+    # =====================================================
+
+    if "open google" in command_lower:
+
+        message = "Opening Google."
+
+        speak(message)
+
+        webbrowser.open(
+            "https://www.google.com"
+        )
+
+        return message
+
+
+    # =====================================================
+    # YOUTUBE
+    # =====================================================
+
+    elif "open youtube" in command_lower:
+
+        message = "Opening YouTube."
+
+        speak(message)
+
+        webbrowser.open(
+            "https://www.youtube.com"
+        )
+
+        return message
+
+
+    # =====================================================
+    # TWITTER
+    # =====================================================
+
+    elif "open twitter" in command_lower:
+
+        message = "Opening Twitter."
+
+        speak(message)
+
+        webbrowser.open(
+            "https://www.twitter.com"
+        )
+
+        return message
+
+
+    # =====================================================
+    # LINKEDIN
+    # =====================================================
+
+    elif "open linkedin" in command_lower:
+
+        message = "Opening LinkedIn."
+
+        speak(message)
+
+        webbrowser.open(
+            "https://www.linkedin.com/"
+        )
+
+        return message
+
+
+    # =====================================================
+    # HACKERRANK
+    # =====================================================
+
+    elif "open hackerrank" in command_lower:
+
+        message = "Opening HackerRank."
+
+        speak(message)
+
+        webbrowser.open(
+            "https://www.hackerrank.com/"
+        )
+
+        return message
+
+
+    # =====================================================
+    # GMAIL
+    # =====================================================
+
+    elif "open gmail" in command_lower:
+
+        message = "Opening Gmail."
+
+        speak(message)
+
+        webbrowser.open(
+            "https://mail.google.com/"
+        )
+
+        return message
+
+
+    # =====================================================
+    # GITHUB
+    # =====================================================
+
+    elif "open github" in command_lower:
+
+        message = "Opening GitHub."
+
+        speak(message)
+
+        webbrowser.open(
+            "https://github.com"
+        )
+
+        return message
+
+
+    # =====================================================
+    # TIME
+    # =====================================================
+
+    elif "time" in command_lower:
+
+        now = datetime.datetime.now().strftime(
+            "%I:%M %p"
+        )
+
+        message = f"The time is {now}"
+
+        speak(message)
+
+        return message
+
+
+    # =====================================================
+    # MUSIC
+    # =====================================================
+
+    elif command_lower.startswith("play "):
+
+        song = command_lower.split(
+            "play ",
+            1
+        )[1].strip()
+
+        if song in musicLibrary.music:
+
+            message = f"Playing {song}."
+
+            speak(message)
+
+            webbrowser.open(
+                musicLibrary.music[song]
+            )
+
+            return message
+
+        else:
+
+            message = "Sorry, song not found."
+
+            speak(message)
+
+            return message
+
+
+    # =====================================================
+    # NEWS
+    # =====================================================
+
+    elif "news" in command_lower:
+
+        return get_news()
+
+
+    # =====================================================
+    # JARVIS
+    # =====================================================
+
+    elif command_lower.startswith("jarvis"):
+
+        question = command[
+            len("jarvis"):
+        ].strip()
+
+        if question:
+
+            return ask_ai(question)
+
+        else:
+
+            message = (
+                "Yes, how can I help you?"
+            )
+
+            speak(message)
+
+            return message
+
+
+    # =====================================================
+    # ASK AI
+    # =====================================================
+
+    elif command_lower.startswith("ask ai"):
+
+        question = command[
+            len("ask ai"):
+        ].strip()
+
+        if question:
+
+            return ask_ai(question)
+
+        else:
+
+            message = (
+                "What would you like me to answer?"
+            )
+
+            speak(message)
+
+            return message
+
+
+    # =====================================================
+    # GENERAL AI QUESTIONS
+    # =====================================================
+
+    elif any(
+        word in command_lower
+        for word in [
+            "what is",
+            "who is",
+            "why is",
+            "how do",
+            "how can",
+            "explain",
+            "tell me about",
+            "define"
+        ]
+    ):
+
+        return ask_ai(command)
+
+
+    # =====================================================
+    # EXIT
+    # =====================================================
+
+    elif (
+        "exit" in command_lower
+        or "quit" in command_lower
+        or "goodbye" in command_lower
+        or "stop jarvis" in command_lower
+    ):
+
+        message = (
+            "Goodbye. Have a great day!"
+        )
+
+        speak(message)
+
+        return "__EXIT__"
+
+
+    # =====================================================
+    # UNKNOWN COMMAND
+    # =====================================================
+
+    else:
+
+        message = (
+            "I don't understand that command. "
+            "You can ask me anything by saying Jarvis."
+        )
+
+        speak(message)
+
+        return message
+
+
+# =========================================================
+# TERMINAL MODE
 # =========================================================
 
 if __name__ == "__main__":
 
-    speak(
-        "Initializing Jarvis."
-    )
+    speak("Initializing Jarvis.")
 
-    speak(
-        "How can I help you?"
-    )
+    speak("How can I help you?")
 
     while True:
 
         command = take_command()
 
         if not command:
+
+            command = input(
+                "Type your command: "
+            )
+
+        if not command:
             continue
 
-        print(
-            "You said:",
-            command
-        )
+        result = process_command(command)
 
-        command_lower = command.lower().strip()
-
-
-        # =================================================
-        # GOOGLE
-        # =================================================
-
-        if "open google" in command_lower:
-
-            speak(
-                "Opening Google."
-            )
-
-            webbrowser.open(
-                "https://www.google.com"
-            )
-
-
-        # =================================================
-        # YOUTUBE
-        # =================================================
-
-        elif "open youtube" in command_lower:
-
-            speak(
-                "Opening YouTube."
-            )
-
-            webbrowser.open(
-                "https://www.youtube.com"
-            )
-
-
-        # =================================================
-        # TWITTER
-        # =================================================
-
-        elif "open twitter" in command_lower:
-
-            speak(
-                "Opening Twitter."
-            )
-
-            webbrowser.open(
-                "https://www.twitter.com"
-            )
-
-
-        # =================================================
-        # LINKEDIN
-        # =================================================
-
-        elif "open linkedin" in command_lower:
-
-            speak(
-                "Opening LinkedIn."
-            )
-
-            webbrowser.open(
-                "https://www.linkedin.com/"
-            )
-
-
-        # =================================================
-        # HACKERRANK
-        # =================================================
-
-        elif "open hackerrank" in command_lower:
-
-            speak(
-                "Opening HackerRank."
-            )
-
-            webbrowser.open(
-                "https://www.hackerrank.com/"
-            )
-
-
-        # =================================================
-        # GMAIL
-        # =================================================
-
-        elif "open gmail" in command_lower:
-
-            speak(
-                "Opening Gmail."
-            )
-
-            webbrowser.open(
-                "https://mail.google.com/"
-            )
-
-
-        # =================================================
-        # GITHUB
-        # =================================================
-
-        elif "open github" in command_lower:
-
-            speak(
-                "Opening GitHub."
-            )
-
-            webbrowser.open(
-                "https://github.com"
-            )
-
-
-        # =================================================
-        # TIME
-        # =================================================
-
-        elif "time" in command_lower:
-
-            now = datetime.datetime.now().strftime(
-                "%I:%M %p"
-            )
-
-            speak(
-                f"The time is {now}"
-            )
-
-
-        # =================================================
-        # MUSIC
-        # =================================================
-
-        elif command_lower.startswith("play "):
-
-            song = command_lower.split(
-                "play ",
-                1
-            )[1].strip()
-
-            if song in musicLibrary.music:
-
-                speak(
-                    f"Playing {song}."
-                )
-
-                webbrowser.open(
-                    musicLibrary.music[song]
-                )
-
-            else:
-
-                speak(
-                    "Sorry, song not found."
-                )
-
-
-        # =================================================
-        # NEWS
-        # =================================================
-
-        elif "news" in command_lower:
-
-            get_news()
-
-
-        # =================================================
-        # AI
-        # =================================================
-
-        elif command_lower.startswith("jarvis"):
-
-            question = command[
-                len("jarvis"):
-            ].strip()
-
-            if question:
-
-                ask_ai(question)
-
-            else:
-
-                speak(
-                    "Yes, how can I help you?"
-                )
-
-
-        # =================================================
-        # ASK AI
-        # =================================================
-
-        elif command_lower.startswith("ask ai"):
-
-            question = command[
-                len("ask ai"):
-            ].strip()
-
-            if question:
-
-                ask_ai(question)
-
-            else:
-
-                speak(
-                    "What would you like me to answer?"
-                )
-
-
-        # =================================================
-        # GENERAL QUESTIONS
-        # =================================================
-
-        elif any(
-            word in command_lower
-            for word in [
-                "what is",
-                "who is",
-                "why is",
-                "how do",
-                "how can",
-                "explain",
-                "tell me about",
-                "define"
-            ]
-        ):
-
-            ask_ai(command)
-
-
-        # =================================================
-        # EXIT
-        # =================================================
-
-        elif (
-            "exit" in command_lower
-            or "quit" in command_lower
-            or "goodbye" in command_lower
-            or "stop jarvis" in command_lower
-        ):
-
-            speak(
-                "Goodbye. Have a great day!"
-            )
+        if result == "__EXIT__":
 
             break
-
-
-        # =================================================
-        # UNKNOWN COMMAND
-        # =================================================
-
-        else:
-
-            speak(
-                "I don't understand that command. "
-                "You can ask me anything by saying Jarvis."
-            )
