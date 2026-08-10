@@ -1,119 +1,129 @@
-
 import pygame
 import math
 import sys
+import threading
+import psutil
 
 from main import take_command, process_command
 
 
-# =========================================================
-# INITIALIZE PYGAME
-# =========================================================
-
 pygame.init()
 
 WIDTH = 1100
-HEIGHT = 720
+HEIGHT = 700
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("JARVIS AI Assistant")
-
 clock = pygame.time.Clock()
 
-
-# =========================================================
+# =========================
 # FONTS
-# =========================================================
+# =========================
 
-title_font = pygame.font.Font(None, 64)
+title_font = pygame.font.Font(None, 58)
 subtitle_font = pygame.font.Font(None, 28)
 status_font = pygame.font.Font(None, 32)
-small_font = pygame.font.Font(None, 22)
-input_font = pygame.font.Font(None, 28)
-history_font = pygame.font.Font(None, 20)
+text_font = pygame.font.Font(None, 25)
+small_font = pygame.font.Font(None, 21)
+button_font = pygame.font.Font(None, 24)
 
-
-# =========================================================
+# =========================
 # COLORS
-# =========================================================
+# =========================
 
-BG = (8, 12, 22)
-PANEL = (15, 22, 38)
-PANEL_2 = (20, 29, 48)
+BG = (7, 11, 20)
+PANEL = (15, 22, 36)
+PANEL_2 = (20, 29, 47)
 TEXT = (235, 245, 255)
-MUTED = (145, 160, 180)
+MUTED = (140, 155, 175)
 ACCENT = (0, 210, 255)
 ACCENT_2 = (80, 120, 255)
-DANGER = (220, 80, 100)
+SUCCESS = (80, 220, 150)
 
-
-# =========================================================
+# =========================
 # STATE
-# =========================================================
+# =========================
 
-status = "READY"
 running = True
-
+status = "READY"
 input_text = ""
-response_text = ""
+response_text = "Welcome. How can I help you?"
+
+chat_history = []
 
 input_active = True
+processing = False
 
-# Command history
-command_history = []
-
-MAX_HISTORY = 6
-
-
-# =========================================================
+# =========================
 # BUTTONS
-# =========================================================
+# =========================
 
-mic_button = pygame.Rect(
-    WIDTH // 2 - 250,
-    HEIGHT - 110,
-    160,
-    52
-)
+input_box = pygame.Rect(40, 595, 700, 48)
 
-send_button = pygame.Rect(
-    WIDTH // 2 - 70,
-    HEIGHT - 110,
-    140,
-    52
-)
+send_button = pygame.Rect(755, 595, 135, 48)
+mic_button = pygame.Rect(905, 595, 135, 48)
 
-clear_button = pygame.Rect(
-    WIDTH // 2 + 90,
-    HEIGHT - 110,
-    160,
-    52
-)
+google_button = pygame.Rect(40, 525, 135, 42)
+youtube_button = pygame.Rect(190, 525, 135, 42)
+github_button = pygame.Rect(340, 525, 135, 42)
+status_button = pygame.Rect(490, 525, 135, 42)
 
-input_box = pygame.Rect(
-    100,
-    HEIGHT - 175,
-    WIDTH - 200,
-    52
-)
+# =========================
+# SYSTEM INFO
+# =========================
+
+def get_system_info():
+
+    cpu = psutil.cpu_percent(interval=0.1)
+    ram = psutil.virtual_memory().percent
+
+    battery = psutil.sensors_battery()
+
+    if battery:
+        battery_percent = int(battery.percent)
+    else:
+        battery_percent = 0
+
+    return cpu, ram, battery_percent
 
 
-# =========================================================
-# DRAW AI ORB
-# =========================================================
+# =========================
+# DRAW TEXT
+# =========================
 
-def draw_orb(surface, x, y, time):
+def draw_text(text, font, color, x, y):
+
+    surface = font.render(str(text), True, color)
+    screen.blit(surface, (x, y))
+
+
+def draw_centered(text, font, color, y):
+
+    surface = font.render(str(text), True, color)
+
+    rect = surface.get_rect(
+        center=(WIDTH // 2, y)
+    )
+
+    screen.blit(surface, rect)
+
+
+# =========================
+# ORB
+# =========================
+
+def draw_orb(x, y, time):
 
     pulse = math.sin(time * 0.004) * 8
 
-    for radius in [
+    for radius in (
         105 + pulse,
         85 + pulse / 2,
         65
-    ]:
+    ):
 
         pygame.draw.circle(
-            surface,
+            screen,
             ACCENT,
             (x, y),
             int(radius),
@@ -121,14 +131,14 @@ def draw_orb(surface, x, y, time):
         )
 
     pygame.draw.circle(
-        surface,
+        screen,
         PANEL,
         (x, y),
         52
     )
 
     pygame.draw.circle(
-        surface,
+        screen,
         ACCENT,
         (x, y),
         48,
@@ -136,513 +146,422 @@ def draw_orb(surface, x, y, time):
     )
 
     pygame.draw.circle(
-        surface,
+        screen,
         ACCENT_2,
         (x, y),
         18
     )
 
 
-# =========================================================
-# CENTERED TEXT
-# =========================================================
+# =========================
+# ADD CHAT
+# =========================
 
-def draw_centered_text(text, font, color, y):
+def add_chat(user, assistant):
 
-    text_surface = font.render(
-        text,
-        True,
-        color
+    chat_history.append(
+        ("YOU", user)
     )
 
-    text_rect = text_surface.get_rect(
-        center=(WIDTH // 2, y)
+    chat_history.append(
+        ("JARVIS", assistant)
     )
 
-    screen.blit(
-        text_surface,
-        text_rect
-    )
+    if len(chat_history) > 6:
+        del chat_history[:-6]
 
 
-# =========================================================
-# ADD HISTORY
-# =========================================================
+# =========================
+# COMMAND WORKER
+# =========================
 
-def add_history(command, result):
+def execute_command(command):
+
+    global response_text
+    global status
+    global processing
+    global input_text
 
     if not command.strip():
         return
 
-    command_history.append(
-        (command.strip(), result or "Done.")
-    )
-
-    if len(command_history) > MAX_HISTORY:
-
-        command_history.pop(0)
-
-
-# =========================================================
-# CLEAR HISTORY
-# =========================================================
-
-def clear_history():
-
-    global response_text
-
-    command_history.clear()
-
-    response_text = "Command history cleared."
-
-    print("History cleared.")
-
-
-# =========================================================
-# PROCESS COMMAND
-# =========================================================
-
-def run_command(command):
-
-    global status
-    global response_text
-    global input_text
-
-    if not command.strip():
-
-        return None
-
+    processing = True
     status = "THINKING..."
-
     response_text = "Processing..."
-
-    pygame.display.flip()
 
     try:
 
         result = process_command(command)
 
+        if result == "__EXIT__":
+
+            processing = False
+            return "__EXIT__"
+
+        if result:
+
+            response_text = str(result)
+
+            add_chat(
+                command,
+                response_text
+            )
+
+        else:
+
+            response_text = "Command completed."
+
+            add_chat(
+                command,
+                response_text
+            )
+
     except Exception as e:
 
         print("Command Error:", e)
 
-        result = "Sorry, something went wrong."
+        response_text = "Something went wrong."
 
-    if result == "__EXIT__":
-
-        return "__EXIT__"
-
-    response_text = result if result else "Done."
-
-    add_history(
-        command,
-        response_text
-    )
+        add_chat(
+            command,
+            response_text
+        )
 
     status = "READY"
-
+    processing = False
     input_text = ""
 
-    return result
+    return response_text
 
 
-# =========================================================
-# VOICE COMMAND
-# =========================================================
-
-def handle_voice_command():
-
-    global status
-    global response_text
-
-    status = "LISTENING..."
-
-    response_text = "Listening..."
-
-    pygame.display.flip()
-
-    try:
-
-        command = take_command()
-
-    except Exception as e:
-
-        print("Voice Error:", e)
-
-        command = None
-
-    if command:
-
-        run_command(command)
-
-    else:
-
-        status = "READY"
-
-        response_text = "I didn't hear anything."
-
-
-# =========================================================
+# =========================
 # TYPED COMMAND
-# =========================================================
+# =========================
 
-def handle_typed_command():
+def send_command():
 
     global input_text
 
     command = input_text.strip()
 
-    if command:
-
-        result = run_command(command)
-
-        if result == "__EXIT__":
-
-            return "__EXIT__"
-
-    return None
-
-
-# =========================================================
-# DRAW HISTORY
-# =========================================================
-
-def draw_history():
-
-    history_x = 40
-    history_y = 125
-
-    history_width = 270
-    history_height = 390
-
-    # Panel
-    history_panel = pygame.Rect(
-        history_x,
-        history_y,
-        history_width,
-        history_height
-    )
-
-    pygame.draw.rect(
-        screen,
-        PANEL,
-        history_panel,
-        border_radius=16
-    )
-
-    pygame.draw.rect(
-        screen,
-        ACCENT,
-        history_panel,
-        1,
-        border_radius=16
-    )
-
-    # Title
-    title = small_font.render(
-        "COMMAND HISTORY",
-        True,
-        TEXT
-    )
-
-    screen.blit(
-        title,
-        (
-            history_x + 18,
-            history_y + 18
-        )
-    )
-
-    # Separator
-    pygame.draw.line(
-        screen,
-        MUTED,
-        (
-            history_x + 18,
-            history_y + 50
-        ),
-        (
-            history_x + history_width - 18,
-            history_y + 50
-        ),
-        1
-    )
-
-    if not command_history:
-
-        empty = history_font.render(
-            "No commands yet",
-            True,
-            MUTED
-        )
-
-        screen.blit(
-            empty,
-            (
-                history_x + 18,
-                history_y + 75
-            )
-        )
-
+    if not command:
         return
 
-    y = history_y + 70
+    thread = threading.Thread(
+        target=execute_command,
+        args=(command,),
+        daemon=True
+    )
 
-    for index, (command, result) in enumerate(
-        reversed(command_history)
-    ):
-
-        # Command
-        command_display = command
-
-        if len(command_display) > 30:
-
-            command_display = (
-                command_display[:27] + "..."
-            )
-
-        command_surface = history_font.render(
-            "› " + command_display,
-            True,
-            ACCENT
-        )
-
-        screen.blit(
-            command_surface,
-            (
-                history_x + 18,
-                y
-            )
-        )
-
-        y += 24
-
-        # Result
-        result_display = result
-
-        if len(result_display) > 32:
-
-            result_display = (
-                result_display[:29] + "..."
-            )
-
-        result_surface = history_font.render(
-            result_display,
-            True,
-            MUTED
-        )
-
-        screen.blit(
-            result_surface,
-            (
-                history_x + 30,
-                y
-            )
-        )
-
-        y += 42
+    thread.start()
 
 
-# =========================================================
+# =========================
+# VOICE COMMAND
+# =========================
+
+def voice_command():
+
+    global status
+    global response_text
+    global processing
+
+    if processing:
+        return
+
+    status = "LISTENING..."
+    response_text = "Listening..."
+
+    def voice_worker():
+
+        global status
+        global response_text
+        global processing
+
+        processing = True
+
+        try:
+
+            command = take_command()
+
+            if command:
+
+                execute_command(command)
+
+            else:
+
+                response_text = "I didn't hear anything."
+                status = "READY"
+
+        except Exception as e:
+
+            print("Voice Error:", e)
+
+            response_text = "Voice input failed."
+            status = "READY"
+
+        processing = False
+
+    thread = threading.Thread(
+        target=voice_worker,
+        daemon=True
+    )
+
+    thread.start()
+
+
+# =========================
+# QUICK COMMAND
+# =========================
+
+def quick_command(command):
+
+    thread = threading.Thread(
+        target=execute_command,
+        args=(command,),
+        daemon=True
+    )
+
+    thread.start()
+
+
+# =========================
 # MAIN LOOP
-# =========================================================
+# =========================
 
 while running:
 
     current_time = pygame.time.get_ticks()
 
+    cpu, ram, battery = get_system_info()
 
-    # =====================================================
+    # =====================
     # EVENTS
-    # =====================================================
+    # =====================
 
     for event in pygame.event.get():
-
-        # -------------------------------------------------
-        # WINDOW CLOSE
-        # -------------------------------------------------
 
         if event.type == pygame.QUIT:
 
             running = False
 
-
-        # -------------------------------------------------
-        # MOUSE
-        # -------------------------------------------------
-
         elif event.type == pygame.MOUSEBUTTONDOWN:
 
-            # Microphone
-            if mic_button.collidepoint(event.pos):
-
-                handle_voice_command()
-
-
-            # Send
-            elif send_button.collidepoint(event.pos):
-
-                result = handle_typed_command()
-
-                if result == "__EXIT__":
-
-                    running = False
-
-
-            # Clear
-            elif clear_button.collidepoint(event.pos):
-
-                clear_history()
-
-
-            # Input
-            elif input_box.collidepoint(event.pos):
+            if input_box.collidepoint(event.pos):
 
                 input_active = True
 
+            elif send_button.collidepoint(event.pos):
+
+                send_command()
+
+            elif mic_button.collidepoint(event.pos):
+
+                voice_command()
+
+            elif google_button.collidepoint(event.pos):
+
+                quick_command("open google")
+
+            elif youtube_button.collidepoint(event.pos):
+
+                quick_command("open youtube")
+
+            elif github_button.collidepoint(event.pos):
+
+                quick_command("open github")
+
+            elif status_button.collidepoint(event.pos):
+
+                quick_command("system status")
 
             else:
 
                 input_active = False
 
-
-        # -------------------------------------------------
-        # KEYBOARD
-        # -------------------------------------------------
-
         elif event.type == pygame.KEYDOWN:
 
-            # ESC
             if event.key == pygame.K_ESCAPE:
 
                 running = False
 
+            elif event.key == pygame.K_RETURN:
 
-            # ENTER
-            elif (
-                event.key == pygame.K_RETURN
-                and input_active
-            ):
+                if input_active:
+                    send_command()
 
-                result = handle_typed_command()
+            elif event.key == pygame.K_BACKSPACE:
 
-                if result == "__EXIT__":
+                if input_active:
+                    input_text = input_text[:-1]
 
-                    running = False
+            else:
 
+                if input_active and event.unicode:
 
-            # BACKSPACE
-            elif (
-                event.key == pygame.K_BACKSPACE
-                and input_active
-            ):
+                    if len(input_text) < 100:
 
-                input_text = input_text[:-1]
+                        input_text += event.unicode
 
-
-            # SPACE = microphone
-            elif (
-                event.key == pygame.K_SPACE
-                and not input_active
-            ):
-
-                handle_voice_command()
-
-
-            # Normal typing
-            elif (
-                input_active
-                and event.unicode
-                and event.key != pygame.K_RETURN
-            ):
-
-                if len(input_text) < 120:
-
-                    input_text += event.unicode
-
-
-    # =====================================================
+    # =====================
     # BACKGROUND
-    # =====================================================
+    # =====================
 
     screen.fill(BG)
 
-
-    # =====================================================
+    # =====================
     # HEADER
-    # =====================================================
+    # =====================
 
-    draw_centered_text(
+    draw_centered(
         "J A R V I S",
         title_font,
         TEXT,
-        50
+        45
     )
 
-    draw_centered_text(
-        "AI VOICE ASSISTANT",
+    draw_centered(
+        "PERSONAL AI DESKTOP ASSISTANT",
         subtitle_font,
         MUTED,
-        88
+        82
     )
 
+    # =====================
+    # SYSTEM PANEL
+    # =====================
 
-    # =====================================================
-    # HISTORY PANEL
-    # =====================================================
+    pygame.draw.rect(
+        screen,
+        PANEL,
+        (30, 110, 250, 145),
+        border_radius=18
+    )
 
-    draw_history()
+    draw_text(
+        "SYSTEM MONITOR",
+        button_font,
+        ACCENT,
+        50,
+        130
+    )
 
+    draw_text(
+        f"CPU       {cpu:.0f}%",
+        text_font,
+        TEXT,
+        50,
+        165
+    )
 
-    # =====================================================
-    # AI ORB
-    # =====================================================
+    draw_text(
+        f"RAM       {ram:.0f}%",
+        text_font,
+        TEXT,
+        50,
+        195
+    )
+
+    draw_text(
+        f"BATTERY   {battery}%",
+        text_font,
+        TEXT,
+        50,
+        225
+    )
+
+    # =====================
+    # ORB
+    # =====================
 
     draw_orb(
-        screen,
-        WIDTH // 2 + 130,
-        HEIGHT // 2 - 65,
+        WIDTH // 2,
+        275,
         current_time
     )
 
-
-    # =====================================================
+    # =====================
     # STATUS
-    # =====================================================
+    # =====================
 
-    draw_centered_text(
+    draw_centered(
         status,
         status_font,
         ACCENT,
-        HEIGHT // 2 + 95
+        395
     )
 
-
-    # =====================================================
+    # =====================
     # RESPONSE
-    # =====================================================
+    # =====================
 
-    if response_text:
+    pygame.draw.rect(
+        screen,
+        PANEL,
+        (320, 425, 740, 82),
+        border_radius=15
+    )
 
-        display_response = response_text
+    display_response = response_text
 
-        if len(display_response) > 65:
+    if len(display_response) > 90:
 
-            display_response = (
-                display_response[:65] + "..."
-            )
-
-        draw_centered_text(
-            display_response,
-            small_font,
-            TEXT,
-            HEIGHT // 2 + 135
+        display_response = (
+            display_response[:90] + "..."
         )
 
+    draw_text(
+        display_response,
+        text_font,
+        TEXT,
+        340,
+        455
+    )
 
-    # =====================================================
-    # INPUT BOX
-    # =====================================================
+    # =====================
+    # QUICK BUTTONS
+    # =====================
+
+    buttons = [
+        (google_button, "GOOGLE"),
+        (youtube_button, "YOUTUBE"),
+        (github_button, "GITHUB"),
+        (status_button, "SYSTEM")
+    ]
+
+    for rect, label in buttons:
+
+        pygame.draw.rect(
+            screen,
+            PANEL_2,
+            rect,
+            border_radius=10
+        )
+
+        pygame.draw.rect(
+            screen,
+            ACCENT,
+            rect,
+            1,
+            border_radius=10
+        )
+
+        surface = button_font.render(
+            label,
+            True,
+            TEXT
+        )
+
+        screen.blit(
+            surface,
+            surface.get_rect(
+                center=rect.center
+            )
+        )
+
+    # =====================
+    # INPUT
+    # =====================
 
     pygame.draw.rect(
         screen,
@@ -659,139 +578,128 @@ while running:
         border_radius=12
     )
 
-
     if input_text:
 
-        input_surface = input_font.render(
+        draw_text(
             input_text,
-            True,
-            TEXT
+            text_font,
+            TEXT,
+            input_box.x + 15,
+            input_box.y + 13
         )
 
     else:
 
-        input_surface = input_font.render(
+        draw_text(
             "Type your command...",
-            True,
-            MUTED
-        )
-
-
-    screen.blit(
-        input_surface,
-        (
+            text_font,
+            MUTED,
             input_box.x + 15,
-            input_box.y + 12
+            input_box.y + 13
         )
-    )
 
-
-    # =====================================================
-    # MIC BUTTON
-    # =====================================================
-
-    pygame.draw.rect(
-        screen,
-        ACCENT,
-        mic_button,
-        border_radius=14
-    )
-
-    mic_text = small_font.render(
-        "MIC / SPEAK",
-        True,
-        BG
-    )
-
-    mic_rect = mic_text.get_rect(
-        center=mic_button.center
-    )
-
-    screen.blit(
-        mic_text,
-        mic_rect
-    )
-
-
-    # =====================================================
-    # SEND BUTTON
-    # =====================================================
+    # =====================
+    # SEND
+    # =====================
 
     pygame.draw.rect(
         screen,
         ACCENT_2,
         send_button,
-        border_radius=14
+        border_radius=12
     )
 
-    send_text = small_font.render(
+    draw_centered(
         "SEND",
-        True,
-        TEXT
+        button_font,
+        TEXT,
+        send_button.centery
     )
 
-    send_rect = send_text.get_rect(
-        center=send_button.center
-    )
-
-    screen.blit(
-        send_text,
-        send_rect
-    )
-
-
-    # =====================================================
-    # CLEAR BUTTON
-    # =====================================================
+    # =====================
+    # MIC
+    # =====================
 
     pygame.draw.rect(
         screen,
-        DANGER,
-        clear_button,
-        border_radius=14
+        ACCENT,
+        mic_button,
+        border_radius=12
     )
 
-    clear_text = small_font.render(
-        "CLEAR",
-        True,
-        TEXT
+    draw_centered(
+        "🎙 MIC",
+        button_font,
+        BG,
+        mic_button.centery
     )
 
-    clear_rect = clear_text.get_rect(
-        center=clear_button.center
+    # =====================
+    # CHAT HISTORY
+    # =====================
+
+    pygame.draw.rect(
+        screen,
+        PANEL,
+        (760, 110, 300, 295),
+        border_radius=18
     )
 
-    screen.blit(
-        clear_text,
-        clear_rect
+    draw_text(
+        "RECENT ACTIVITY",
+        button_font,
+        ACCENT,
+        785,
+        130
     )
 
+    y = 165
 
-    # =====================================================
+    for speaker, message in chat_history:
+
+        short_message = message
+
+        if len(short_message) > 32:
+
+            short_message = (
+                short_message[:32] + "..."
+            )
+
+        draw_text(
+            speaker + ":",
+            small_font,
+            ACCENT if speaker == "JARVIS" else MUTED,
+            785,
+            y
+        )
+
+        y += 23
+
+        draw_text(
+            short_message,
+            small_font,
+            TEXT,
+            785,
+            y
+        )
+
+        y += 38
+
+    # =====================
     # FOOTER
-    # =====================================================
+    # =====================
 
-    draw_centered_text(
-        "Groq AI  •  Python  •  Pygame",
+    draw_centered(
+        "Python  •  Pygame  •  Groq AI  •  System Monitor",
         small_font,
         MUTED,
-        HEIGHT - 25
+        680
     )
-
-
-    # =====================================================
-    # UPDATE
-    # =====================================================
 
     pygame.display.flip()
 
-    clock.tick(60)
+    clock.tick(30)
 
-
-# =========================================================
-# EXIT
-# =========================================================
 
 pygame.quit()
 sys.exit()
-
