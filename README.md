@@ -377,7 +377,7 @@ The emphasis is not just on knowing syntax, but on learning how to:
 **Bhoomi Jain**
 
 Integrated M.Tech — Artificial Intelligence & Machine Learning
-VIT Bhopal University
+VIT 
 
 ### Interests
 
