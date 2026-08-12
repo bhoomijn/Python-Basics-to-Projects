@@ -31,7 +31,11 @@ async def whatsapp_webhook(request: Request):
         reply.body("Hello! 👋 Main tumhara WhatsApp bot hoon.")
 
     elif text == "help":
-        reply.body("Commands:\nhi - Greeting\nhelp - Show commands")
+        reply.body(
+            "Commands:\n"
+            "hi - Greeting\n"
+            "help - Show commands"
+        )
 
     else:
         reply.body(f"Tumne kaha: {incoming_message}")
