@@ -1,57 +1,28 @@
 
-import pyautogui
-import time
-import pyperclip
+def get_reply(message):
+    message = message.lower().strip()
 
-# =========================================================
-# STEP 1: CLICK
-# =========================================================
+    if message in ["hi", "hello", "hey"]:
+        return "Hello! 👋 Main tumhara WhatsApp Bot hoon."
 
-pyautogui.click(400, 386)
+    if message in ["help", "menu"]:
+        return (
+            "🤖 Bot Menu\n\n"
+            "1. Hi - Greeting\n"
+            "2. Help - Show menu\n"
+            "3. About - Bot information"
+        )
 
-time.sleep(1)
+    if message == "about":
+        return (
+            "🤖 WhatsApp Bot\n"
+            "Built with Python + FastAPI + WhatsApp Cloud API."
+        )
 
+    if "how are you" in message:
+        return "I'm doing great! 😄"
 
-# =========================================================
-# STEP 2: SELECT TEXT
-# =========================================================
-
-pyautogui.moveTo(1244, 711)
-
-pyautogui.dragTo(
-    1224,
-    735,
-    duration=1.0,
-    button="left"
-)
-
-time.sleep(1)
-#1026
-
-# =========================================================
-# STEP 3: COPY SELECTED TEXT
-# =========================================================
-
-pyautogui.hotkey("ctrl", "c")
-
-time.sleep(1)
-
-
-# =========================================================
-# STEP 4: GET COPIED TEXT
-# =========================================================
-
-text = pyperclip.paste()
-
-
-# =========================================================
-# STEP 5: DISPLAY TEXT
-# =========================================================
-
-print("\n==============================")
-print("       COPIED TEXT")
-print("==============================")
-
-print(text)
-
-print("==============================")
+    return (
+        "Mujhe ye message samajh nahi aaya 😅\n"
+        "Type 'help' to see available commands."
+    )
