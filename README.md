@@ -1,5 +1,5 @@
 # 🐍 Python Basics to Projects
-
+ 
 ### A structured journey from Python fundamentals to real-world software and AI projects.
 
 [![Python](https://img.shields.io/badge/Python-3.x-blue?logo=python\&logoColor=white)](https://www.python.org/)
