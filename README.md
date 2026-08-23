@@ -1,4 +1,5 @@
 # 🐍 Python Basics to Projects
+
   
 ### A structured journey from Python fundamentals to real-world software and AI projects.
 
