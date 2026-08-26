@@ -2,7 +2,7 @@
  
   
 ### A structured journey from Python fundamentals to real-world software and AI projects.
-
+ 
 [![Python](https://img.shields.io/badge/Python-3.x-blue?logo=python\&logoColor=white)](https://www.python.org/)
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/bhoomijn/Python-Basics-to-Projects)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
